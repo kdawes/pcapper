@@ -3,17 +3,21 @@ var moment = require('moment');
 var events = require('events');
 var uuid = require('node-uuid');
 var follow = require('follow');
+var argv = require('optimist');
+var ethInterface = argv.interface;
+var filter = argv.filter;
+var server = argv.server || "192.168.0.100";
+var port = argv.port || "5984";
+var db   = argv.db || "ip";
+var proto = argv.proto || "http://";
 
-var interface = process.argv[2];
-var filter = process.argv[3];
-
-console.log([interface, filter].join(" "));
+console.log([ethInterface, filter].join(" "));
 
 var ee = new events.EventEmitter();
 
 var pcap = require('pcap'),
     tcp_tracker = new pcap.TCP_tracker(),
-    pcap_session = pcap.createSession(interface, filter);
+    pcap_session = pcap.createSession(ethInterface, filter);
 
 tcp_tracker.on('start', function (session) {
 	console.log("Start of TCP session between " + session.src_name + " and " + session.dst_name);
@@ -32,7 +36,7 @@ pcap_session.on('packet', function (raw_packet) {
     });
 var count = 0;
 ee.on('burst', function( data ) { 
-	var url = "http://127.0.0.1:5984/ip/";
+	var url = [proto, server,":", port, "/", db].join('');
 	var options = { 
 	    headers: {'content-type' : 'application/x-www-form-urlencoded'},
 	    uri : url,
@@ -52,7 +56,7 @@ ee.on('burst', function( data ) {
 
     });
 
-follow("http://couch:5984/ip/", function(error, change) {
+follow([proto, server,":", port, "/", db].join(''), function(error, change) {
 	if(!error)
 	    console.log("Got change number " + change.seq + ": " + change.id + " " + JSON.stringify(change));
     });

@@ -1,0 +1,30 @@
+{
+  "name": "pcapper",
+  "version": "0.0.0",
+  "description": "pcapper =======",
+  "main": "server7.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kdawes/pcapper.git"
+  },
+  "author": "kdawes@gmail.com",
+  "license": "BSD",
+  "gitHead": "c170c8ed4a711906b16801fd83c8b76d224a5cce",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/kdawes/pcapper/issues"
+  },
+  "dependencies": {
+	  "moment":"*",
+	  "async":"*",
+      "tape":"*",
+	  "optimist":"*",
+	  "node-uuid":"*",
+	  "follow":"*",
+	  "pcap":"*"
+  }
+
+}
