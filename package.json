@@ -2,7 +2,7 @@
   "name": "pcapper",
   "version": "0.0.0",
   "description": "pcapper =======",
-  "main": "server7.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,7 +24,8 @@
 	  "optimist":"*",
 	  "node-uuid":"*",
 	  "follow":"*",
-	  "pcap":"*"
+	  "pcap":"*",
+	  "request":"*"
   }
 
 }

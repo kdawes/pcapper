@@ -3,63 +3,74 @@ var moment = require('moment');
 var events = require('events');
 var uuid = require('node-uuid');
 var follow = require('follow');
-var argv = require('optimist');
-var ethInterface = argv.interface;
-var filter = argv.filter;
-var server = argv.server || "192.168.0.100";
-var port = argv.port || "5984";
-var db   = argv.db || "ip";
-var proto = argv.proto || "http://";
+var argv = require('optimist').argv;
 
+var ethInterface = argv.eth;
+var filter = argv.filter;
+var server =  argv.server || "127.0.0.1";
+var port =  argv.port || "5984";
+var db   =  argv.db || "ip";
+var proto =  "http://";
+var ratelimit = argv.ratelimit || 100;
+
+var separateReqPool = {maxSockets: 100};
+
+console.log("ARGV " + JSON.stringify(argv, null, 2)); 
 console.log([ethInterface, filter].join(" "));
 
 var ee = new events.EventEmitter();
-
 var pcap = require('pcap'),
     tcp_tracker = new pcap.TCP_tracker(),
     pcap_session = pcap.createSession(ethInterface, filter);
+var count = 0; 
+var queue = [];
 
 tcp_tracker.on('start', function (session) {
 	console.log("Start of TCP session between " + session.src_name + " and " + session.dst_name);
-    });
+});
 
 tcp_tracker.on('end', function (session) {
 	console.log("End of TCP session between " + session.src_name + " and " + session.dst_name);
-    });
+});
 
 pcap_session.on('packet', function (raw_packet) {
+	count++;
 	var packet = pcap.decode.packet(raw_packet);
-	//console.log("PACKET " + JSON.stringify(packet, null, 2));
-	ee.emit('burst', { "timestamp":moment.valueOf(), 
-		    "packet":packet });
+	ee.emit('burst', { "timestamp":moment.valueOf(), "packet": packet });
 	tcp_tracker.track_packet(packet);
-    });
-var count = 0;
+});
+
 ee.on('burst', function( data ) { 
-	var url = [proto, server,":", port, "/", db].join('');
-	var options = { 
-	    headers: {'content-type' : 'application/x-www-form-urlencoded'},
-	    uri : url,
-	    body:data,
-	    json:true
-	};
-	if ( count++ % 10 === 0 ) {
-       	request.post(options, function( err, response, body ) {
-		if (err) {
-		    console.log("ERROR : " + err);
-		    return;
-		}
-		console.log('BURST was POSTED ' + JSON.stringify(body));
-		
-	    });
-	}
+	data._id = uuid.v4();
+	queue.push(data);
+	if ( ( count > 0 && count % ratelimit === 0)  ) {
+		var url = [proto, server,":", port, "/", db,"/","_bulk_docs"].join('');
+		var options = { 
+			url: url,
+			body: { "docs":  queue },
+			json: true,
+			method: "POST",
+			pool: separateReqPool,
+			timeout: 4000
+		};
 
-    });
+		request(options, function( err, response, body) {
+			if (err) {
+				console.log("ERROR : " + err);
+				return;
+			} else { 
+				//console.log("body" + JSON.stringify(body));
+				console.log(response.statusCode + JSON.stringify(body));
+				while ( queue.length ) { queue.pop(); }
+				console.log("queue freed - length : " + queue.length);
+			}
+		});
+	} 
+});
 
-follow([proto, server,":", port, "/", db].join(''), function(error, change) {
-	if(!error)
-	    console.log("Got change number " + change.seq + ": " + change.id + " " + JSON.stringify(change));
-    });
+// follow([proto, server,":", port, "/", db].join(''), function(error, change) {
+// 	if(!error)
+// 	    console.log("Got change number " + change.seq + ": " + change.id);// + " " + JSON.stringify(change));
+// });
 
-setInterval(function() {
-    }, 1000);
+setInterval(function() {}, 1000);
